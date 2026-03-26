@@ -36,6 +36,8 @@ m_ledCount(0U),
 m_scanEnable(false),
 m_scanPauseCnt(0U),
 m_scanPos(0U),
+m_scanDwell(SCAN_TIME),
+m_dmrDwellMult(2U),
 m_ledValue(true),
 m_watchdog(0U),
 m_int1counter(0U),
@@ -170,20 +172,10 @@ void CIO::process()
     setRX(false);
   }
 
-  if(m_modemState_prev == STATE_DSTAR)
-    scantime = SCAN_TIME;
-  else if(m_modemState_prev == STATE_DMR)
-    scantime = SCAN_TIME * 2U;
-  else if(m_modemState_prev == STATE_YSF)
-    scantime = SCAN_TIME;
-  else if(m_modemState_prev == STATE_P25)
-    scantime = SCAN_TIME;
-  else if(m_modemState_prev == STATE_NXDN)
-    scantime = SCAN_TIME;
-  else if(m_modemState_prev == STATE_M17)
-    scantime = SCAN_TIME;
+  if(m_modemState_prev == STATE_DMR)
+    scantime = m_scanDwell * m_dmrDwellMult;
   else
-    scantime = SCAN_TIME;
+    scantime = m_scanDwell;
 
   if(m_modeTimerCnt >= scantime) {
     m_modeTimerCnt = 0U;
@@ -458,6 +450,22 @@ void CIO::setMode(MMDVM_STATE modemState)
 bool CIO::isScanning() const
 {
   return m_scanEnable;
+}
+
+void CIO::setScanConfig(bool enable, uint16_t dwell_ms, uint8_t dmr_mult)
+{
+  m_scanEnable = enable && (m_TotalModes > 1U);
+
+  // Convert ms to timer ticks (4800 Hz interrupt rate)
+  if (dwell_ms > 0U)
+    m_scanDwell = (uint32_t)dwell_ms * 24U / 5U;
+  else
+    m_scanDwell = SCAN_TIME;
+
+  if (dmr_mult > 0U)
+    m_dmrDwellMult = dmr_mult;
+  else
+    m_dmrDwellMult = 2U;
 }
 
 void CIO::setDecode(bool dcd)

@@ -137,6 +137,7 @@ public:
   void      getIntCounter(uint16_t &int1, uint16_t &int2);
   void      selfTest(void);
   bool      isScanning(void) const;
+  void      setScanConfig(bool enable, uint16_t dwell_ms, uint8_t dmr_mult);
 #if defined(ZUMSPOT_ADF7021) || defined(LONESTAR_USB) || defined(SKYBRIDGE_HS)
   void      checkBand(uint32_t frequency_rx, uint32_t frequency_tx);
   uint8_t   checkZUMspot(uint32_t frequency_rx, uint32_t frequency_tx);
@@ -200,6 +201,8 @@ private:
   uint8_t            m_TotalModes;
   MMDVM_STATE        m_Modes[6];
   bool               m_ledValue;
+  uint32_t           m_scanDwell;
+  uint8_t            m_dmrDwellMult;
   volatile uint32_t  m_watchdog;
   volatile uint16_t  m_int1counter;
   volatile uint16_t  m_int2counter;

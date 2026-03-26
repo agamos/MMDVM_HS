@@ -34,6 +34,7 @@ const uint8_t MMDVM_SET_FREQ     = 0x04U;
 
 const uint8_t MMDVM_RETUNE       = 0x05U;
 const uint8_t MMDVM_READ_RSSI   = 0x06U;
+const uint8_t MMDVM_SCAN_CONFIG = 0x07U;
 
 const uint8_t MMDVM_CAL_DATA     = 0x08U;
 const uint8_t MMDVM_RSSI_DATA    = 0x09U;
@@ -531,6 +532,25 @@ void CSerialPort::sendRSSI()
   writeInt(1U, reply, 6U);
 }
 
+uint8_t CSerialPort::setScanConfig(const uint8_t* data, uint8_t length)
+{
+  if (length < 4U)
+    return 4U;
+
+  // Byte 0: flags (bit0 = scan enable)
+  bool enable = (data[0U] & 0x01U) != 0U;
+
+  // Bytes 1-2: dwell time in ms (LE16, 0 = use default)
+  uint16_t dwell_ms = data[1U] | (data[2U] << 8);
+
+  // Byte 3: DMR dwell multiplier (0 = use default = 2)
+  uint8_t dmr_mult = data[3U];
+
+  io.setScanConfig(enable, dwell_ms, dmr_mult);
+
+  return 0U;
+}
+
 void CSerialPort::setMode(MMDVM_STATE modemState)
 {
   switch (modemState) {
@@ -719,6 +739,14 @@ void CSerialPort::process()
 
           case MMDVM_READ_RSSI:
             sendRSSI();
+            break;
+
+          case MMDVM_SCAN_CONFIG:
+            err = setScanConfig(m_buffer + 3U, m_len - 3U);
+            if (err == 0U)
+              sendACK();
+            else
+              sendNAK(err);
             break;
 
           case MMDVM_CAL_DATA:

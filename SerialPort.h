@@ -90,6 +90,7 @@ private:
   uint8_t setFreq(const uint8_t* data, uint8_t length);
   uint8_t setRetune(const uint8_t* data, uint8_t length);
   void    sendRSSI();
+  uint8_t setScanConfig(const uint8_t* data, uint8_t length);
 
   // Hardware versions
   void    beginInt(uint8_t n, int speed);
