@@ -46,6 +46,8 @@ public:
 
   bool hasOverflowed();
 
+  void reset();
+
 private:
   uint16_t           m_length;
   volatile uint8_t*  m_bits;

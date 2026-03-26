@@ -112,3 +112,11 @@ bool CBitRB::hasOverflowed()
   return overflow;
 }
 
+void CBitRB::reset()
+{
+  m_head     = 0U;
+  m_tail     = 0U;
+  m_full     = false;
+  m_overflow = false;
+}
+

@@ -193,6 +193,7 @@ void CIO::process()
       setMode(m_Modes[m_scanPos]);
       #endif
       io.ifConf(m_Modes[m_scanPos], true);
+      m_rxBuffer.reset();
     }
   }
 
