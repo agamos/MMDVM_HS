@@ -88,6 +88,7 @@ private:
   uint8_t setMode(const uint8_t* data, uint8_t length);
   void    setMode(MMDVM_STATE modemState);
   uint8_t setFreq(const uint8_t* data, uint8_t length);
+  uint8_t setRetune(const uint8_t* data, uint8_t length);
 
   // Hardware versions
   void    beginInt(uint8_t n, int speed);

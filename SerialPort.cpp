@@ -32,6 +32,8 @@ const uint8_t MMDVM_SET_CONFIG   = 0x02U;
 const uint8_t MMDVM_SET_MODE     = 0x03U;
 const uint8_t MMDVM_SET_FREQ     = 0x04U;
 
+const uint8_t MMDVM_RETUNE       = 0x05U;
+
 const uint8_t MMDVM_CAL_DATA     = 0x08U;
 const uint8_t MMDVM_RSSI_DATA    = 0x09U;
 
@@ -477,6 +479,26 @@ uint8_t CSerialPort::setFreq(const uint8_t* data, uint8_t length)
   return io.setFreq(freq_rx, freq_tx, rf_power, pocsag_freq_tx);
 }
 
+uint8_t CSerialPort::setRetune(const uint8_t* data, uint8_t length)
+{
+  if (length < 8U)
+    return 4U;
+
+  uint32_t freq_rx, freq_tx;
+
+  freq_rx  = data[0U] << 0;
+  freq_rx |= data[1U] << 8;
+  freq_rx |= data[2U] << 16;
+  freq_rx |= data[3U] << 24;
+
+  freq_tx  = data[4U] << 0;
+  freq_tx |= data[5U] << 8;
+  freq_tx |= data[6U] << 16;
+  freq_tx |= data[7U] << 24;
+
+  return io.retune(freq_rx, freq_tx);
+}
+
 void CSerialPort::setMode(MMDVM_STATE modemState)
 {
   switch (modemState) {
@@ -649,6 +671,14 @@ void CSerialPort::process()
 
           case MMDVM_SET_FREQ:
             err = setFreq(m_buffer + 3U, m_len - 3U);
+            if (err == 0U)
+              sendACK();
+            else
+              sendNAK(err);
+            break;
+
+          case MMDVM_RETUNE:
+            err = setRetune(m_buffer + 3U, m_len - 3U);
             if (err == 0U)
               sendACK();
             else
