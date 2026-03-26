@@ -820,7 +820,7 @@ void CIO::delay_IFcal() {
 }
 
 void CIO::delay_reset() {
-  delay_us(300);
+  delay_us(1200);
 }
 
 void CIO::delay_us(uint32_t us) {
