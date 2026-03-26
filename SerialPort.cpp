@@ -33,6 +33,7 @@ const uint8_t MMDVM_SET_MODE     = 0x03U;
 const uint8_t MMDVM_SET_FREQ     = 0x04U;
 
 const uint8_t MMDVM_RETUNE       = 0x05U;
+const uint8_t MMDVM_READ_RSSI   = 0x06U;
 
 const uint8_t MMDVM_CAL_DATA     = 0x08U;
 const uint8_t MMDVM_RSSI_DATA    = 0x09U;
@@ -499,6 +500,37 @@ uint8_t CSerialPort::setRetune(const uint8_t* data, uint8_t length)
   return io.retune(freq_rx, freq_tx);
 }
 
+void CSerialPort::sendRSSI()
+{
+  // Read RSSI via ADF7021 REG7 readback (ADC/RSSI mode)
+  uint16_t rb = io.readRegister7(0x0147U);
+
+  uint8_t rb_code   = rb & 0x7FU;
+  uint8_t gain_code = (rb >> 7) & 0x0FU;
+  uint8_t gain_corr;
+
+  switch (gain_code) {
+    case 0b1010:  gain_corr = 0U;   break;
+    case 0b0110:  gain_corr = 24U;  break;
+    case 0b0101:  gain_corr = 38U;  break;
+    case 0b0100:  gain_corr = 58U;  break;
+    case 0b0000:  gain_corr = 86U;  break;
+    default:      gain_corr = 0U;   break;
+  }
+
+  uint16_t rssi_dbm = 130U - (rb_code + gain_corr) / 2U;
+
+  uint8_t reply[6U];
+  reply[0U] = MMDVM_FRAME_START;
+  reply[1U] = 6U;
+  reply[2U] = MMDVM_READ_RSSI;
+  reply[3U] = (rssi_dbm >> 8) & 0xFFU;
+  reply[4U] = (rssi_dbm >> 0) & 0xFFU;
+  reply[5U] = rb_code;
+
+  writeInt(1U, reply, 6U);
+}
+
 void CSerialPort::setMode(MMDVM_STATE modemState)
 {
   switch (modemState) {
@@ -683,6 +715,10 @@ void CSerialPort::process()
               sendACK();
             else
               sendNAK(err);
+            break;
+
+          case MMDVM_READ_RSSI:
+            sendRSSI();
             break;
 
           case MMDVM_CAL_DATA:
