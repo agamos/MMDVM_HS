@@ -155,12 +155,21 @@ void CDMRDMORX::databit(bool bit)
       }
     } else if (m_control == CONTROL_VOICE) {
       // Voice sync
-      DEBUG2("DMRDMORX: voice sync found pos", m_syncPtr);
-      writeRSSIData(frame);
+#if defined(ENABLE_SCAN_MODE)
+      if (m_state == DMORXS_NONE && io.isScanning()) {
+        // Scan mode: reject cold voice sync without prior CC-validated data sync
+        // Prevents false DMR lock on C4FM signals (voice sync has no CC field)
+        m_control = CONTROL_NONE;
+      } else
+#endif
+      {
+        DEBUG2("DMRDMORX: voice sync found pos", m_syncPtr);
+        writeRSSIData(frame);
 
-      m_state     = DMORXS_VOICE;
-      m_syncCount = 0U;
-      m_n         = 0U;
+        m_state     = DMORXS_VOICE;
+        m_syncCount = 0U;
+        m_n         = 0U;
+      }
     } else {
       if (m_state != DMORXS_NONE) {
         m_syncCount++;

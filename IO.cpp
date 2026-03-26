@@ -455,6 +455,11 @@ void CIO::setMode(MMDVM_STATE modemState)
 #endif
 }
 
+bool CIO::isScanning() const
+{
+  return m_scanEnable;
+}
+
 void CIO::setDecode(bool dcd)
 {
   if (dcd != m_dcd) {
