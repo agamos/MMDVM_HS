@@ -200,9 +200,9 @@ private:
   uint8_t            m_scanPos;
   uint8_t            m_TotalModes;
   MMDVM_STATE        m_Modes[6];
-  bool               m_ledValue;
   uint32_t           m_scanDwell;
   uint8_t            m_dmrDwellMult;
+  bool               m_ledValue;
   volatile uint32_t  m_watchdog;
   volatile uint16_t  m_int1counter;
   volatile uint16_t  m_int2counter;
