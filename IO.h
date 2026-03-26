@@ -156,6 +156,8 @@ public:
   void      setDeviations(uint8_t dstarTXLevel, uint8_t dmrTXLevel, uint8_t ysfTXLevel, uint8_t p25TXLevel, uint8_t nxdnTXLevel, uint8_t m17TXLevel, uint8_t pocsagTXLevel, bool ysfLoDev);
   void      updateCal(void);
 
+  uint16_t  readRegister7(uint32_t cmd9bit);
+  bool      pollPLLLock(uint16_t timeout_us = 5000U);
 #if defined(SEND_RSSI_DATA)
   uint16_t  readRSSI(void);
 #endif

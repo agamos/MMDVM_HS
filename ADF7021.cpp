@@ -111,6 +111,86 @@ void Send_AD7021_control2(bool doSle)
 }
 #endif
 
+uint16_t CIO::readRegister7(uint32_t cmd9bit)
+{
+  uint16_t RB_word = 0U;
+
+#if defined(ADF7021_EXTI_IRQn)
+  NVIC_DisableIRQ(ADF7021_EXTI_IRQn);
+  __DSB();
+#endif
+
+  // Send 9-bit readback command
+  for (int AD7021_counter = 8; AD7021_counter >= 0; AD7021_counter--) {
+    if (bitRead(cmd9bit, AD7021_counter) == HIGH)
+      SDATA_pin(HIGH);
+    else
+      SDATA_pin(LOW);
+
+    dlybit();
+    SCLK_pin(HIGH);
+    dlybit();
+    SCLK_pin(LOW);
+  }
+
+  SDATA_pin(LOW);
+
+#if defined(DUPLEX)
+  if (m_duplex || m_calState == STATE_RSSICAL)
+    SLE2_pin(HIGH);
+  else
+    SLE_pin(HIGH);
+#else
+  SLE_pin(HIGH);
+#endif
+
+  dlybit();
+
+  // Read 18-bit readback word (bits 16:1 stored in RB_word)
+  for (int AD7021_counter = 17; AD7021_counter >= 0; AD7021_counter--) {
+    SCLK_pin(HIGH);
+    dlybit();
+
+    if ((AD7021_counter != 17) && (AD7021_counter != 0))
+      RB_word |= ((SREAD_pin() & 0x01) << (AD7021_counter - 1));
+
+    SCLK_pin(LOW);
+    dlybit();
+  }
+
+#if defined(DUPLEX)
+  if (m_duplex || m_calState == STATE_RSSICAL)
+    SLE2_pin(LOW);
+  else
+    SLE_pin(LOW);
+#else
+  SLE_pin(LOW);
+#endif
+
+#if defined(ADF7021_EXTI_IRQn)
+  NVIC_EnableIRQ(ADF7021_EXTI_IRQn);
+#endif
+
+  return RB_word;
+}
+
+bool CIO::pollPLLLock(uint16_t timeout_us)
+{
+  // Poll lock detect bit in REG7 silicon/filter cal readback
+  // Readback command 0x0047: filter cal mode (vs 0x0147 for ADC/RSSI)
+  while (timeout_us > 0U) {
+    uint16_t rb = readRegister7(0x0047U);
+    if (rb & 0x0004U)  // bit 2 = lock detect
+      return true;
+    delay_us(100U);
+    if (timeout_us >= 100U)
+      timeout_us -= 100U;
+    else
+      break;
+  }
+  return false;
+}
+
 #if defined(SEND_RSSI_DATA)
 uint16_t CIO::readRSSI()
 {
@@ -560,6 +640,13 @@ void CIO::ifConf(MMDVM_STATE modemState, bool reset)
 
   // Frequency RX (0)
   setRX();
+
+  // Poll PLL lock after frequency set
+  bool locked = pollPLLLock(5000U);
+#if defined(ENABLE_DEBUG)
+  if (!locked)
+    DEBUG1("ifConf: PLL lock timeout after setRX");
+#endif
 
   // MODULATION (2)
   ADF7021_REG2 |= (uint32_t) 0b0010;               // register 2
