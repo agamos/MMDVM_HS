@@ -1094,6 +1094,121 @@ void CIO::setRX(bool doSle)
   }
 }
 
+uint8_t CIO::retune(uint32_t frequency_rx, uint32_t frequency_tx)
+{
+  // Reject if transmitting
+  if (m_tx)
+    return 4U;
+
+  // Determine band for new TX frequency and check it matches current div2
+  uint32_t new_div2;
+  if ((frequency_tx >= VHF1_MIN) && (frequency_tx < VHF1_MAX))
+    new_div2 = 1U;
+  else if ((frequency_tx >= VHF2_MIN) && (frequency_tx < VHF2_MAX))
+    new_div2 = 1U;
+  else if ((frequency_tx >= UHF1_MIN) && (frequency_tx < UHF1_MAX))
+    new_div2 = 1U;
+  else if ((frequency_tx >= UHF2_MIN) && (frequency_tx < UHF2_MAX))
+    new_div2 = 2U;
+  else
+    return 4U;  // out of range
+
+  if (new_div2 != div2)
+    return 5U;  // band change requires full ifConf()
+
+  // Recalculate RX REG0
+  float divider;
+  int32_t AFC_OFFSET = 0;
+
+  switch (m_modemState_prev) {
+    case STATE_DMR:
+    case STATE_CWID:
+      AFC_OFFSET = AFC_OFFSET_DMR;
+      break;
+    case STATE_YSF:
+      AFC_OFFSET = AFC_OFFSET_YSF;
+      break;
+    case STATE_P25:
+      AFC_OFFSET = AFC_OFFSET_P25;
+      break;
+    case STATE_NXDN:
+      AFC_OFFSET = AFC_OFFSET_NXDN;
+      break;
+    case STATE_M17:
+      AFC_OFFSET = AFC_OFFSET_M17;
+      break;
+    default:
+      AFC_OFFSET = 0;
+      break;
+  }
+
+  if (div2 == 1U)
+    divider = (frequency_rx - 100000 + AFC_OFFSET) / (ADF7021_PFD / 2U);
+  else
+    divider = (frequency_rx - 100000 + (2 * AFC_OFFSET)) / ADF7021_PFD;
+
+  m_RX_N_divider = floor(divider);
+  divider = (divider - m_RX_N_divider) * 32768;
+  m_RX_F_divider = floor(divider + 0.5);
+
+  ADF7021_RX_REG0  = (uint32_t) 0b0000;
+#if defined(BIDIR_DATA_PIN)
+  ADF7021_RX_REG0 |= (uint32_t) 0b01001   << 27;
+#else
+  ADF7021_RX_REG0 |= (uint32_t) 0b01011   << 27;
+#endif
+  ADF7021_RX_REG0 |= (uint32_t) m_RX_N_divider << 19;
+  ADF7021_RX_REG0 |= (uint32_t) m_RX_F_divider << 4;
+
+  // Recalculate TX REG0
+  if (div2 == 1U)
+    divider = frequency_tx / (ADF7021_PFD / 2U);
+  else
+    divider = frequency_tx / ADF7021_PFD;
+
+  m_TX_N_divider = floor(divider);
+  divider = (divider - m_TX_N_divider) * 32768;
+  m_TX_F_divider = floor(divider + 0.5);
+
+  ADF7021_TX_REG0  = (uint32_t) 0b0000;
+#if defined(BIDIR_DATA_PIN)
+  ADF7021_TX_REG0 |= (uint32_t) 0b01000   << 27;
+#else
+  ADF7021_TX_REG0 |= (uint32_t) 0b01010   << 27;
+#endif
+  ADF7021_TX_REG0 |= (uint32_t) m_TX_N_divider << 19;
+  ADF7021_TX_REG0 |= (uint32_t) m_TX_F_divider << 4;
+
+  // Write RX REG0 with SLE (immediate frequency change)
+  AD7021_control_word = ADF7021_RX_REG0;
+  Send_AD7021_control(true);
+
+  // Poll PLL lock
+  bool locked = pollPLLLock(5000U);
+
+  // Flush RX buffer (stale bits from old frequency)
+  m_rxBuffer.reset();
+
+  // Reset all demodulators
+  dstarRX.reset();
+  dmrDMORX.reset();
+  ysfRX.reset();
+  p25RX.reset();
+  nxdnRX.reset();
+  m17RX.reset();
+
+  // Update global frequencies
+  m_frequency_rx = frequency_rx;
+  m_frequency_tx = frequency_tx;
+
+#if defined(ENABLE_DEBUG)
+  if (!locked)
+    DEBUG1("retune: PLL lock timeout");
+#endif
+
+  return locked ? 0U : 6U;
+}
+
 void CIO::setPower(uint8_t power)
 {
   m_power = power >> 2;

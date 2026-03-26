@@ -149,6 +149,7 @@ public:
   void      setTX(void);
   void      setRX(bool doSle = true);
   void      ifConf(MMDVM_STATE modemState, bool reset);
+  uint8_t   retune(uint32_t frequency_rx, uint32_t frequency_tx);
 #if defined(DUPLEX)
   void      ifConf2(MMDVM_STATE modemState);
 #endif
