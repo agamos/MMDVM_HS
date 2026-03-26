@@ -28,6 +28,17 @@
 #define LOW      0
 #define HIGH     1
 
+// EXTI IRQ channel for ADF7021 TxRxCLK interrupt
+#if defined(STM32F10X_MD) || defined(STM32F4XX) || defined(STM32F7XX)
+  #if defined(PI_HAT_7021_REV_02)
+    #define ADF7021_EXTI_IRQn  EXTI15_10_IRQn
+  #elif defined(BIDIR_DATA_PIN)
+    #define ADF7021_EXTI_IRQn  EXTI3_IRQn
+  #else
+    #define ADF7021_EXTI_IRQn  EXTI15_10_IRQn
+  #endif
+#endif
+
 // HS frequency ranges
 #define VHF1_MIN  144000000
 #define VHF1_MAX  148000000

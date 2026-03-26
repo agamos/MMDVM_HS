@@ -79,10 +79,19 @@ static void Send_AD7021_control_slePulse()
 
 void Send_AD7021_control(bool doSle)
 {
+#if defined(ADF7021_EXTI_IRQn)
+  NVIC_DisableIRQ(ADF7021_EXTI_IRQn);
+  __DSB();
+#endif
+
   Send_AD7021_control_shift();
 
   if (doSle)
     Send_AD7021_control_slePulse();
+
+#if defined(ADF7021_EXTI_IRQn)
+  NVIC_EnableIRQ(ADF7021_EXTI_IRQn);
+#endif
 }
 
 #if defined(DUPLEX)
